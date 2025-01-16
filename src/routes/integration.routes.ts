@@ -1,98 +1,10 @@
-import axios from "axios";
 import express from "express";
-
-import { syncRepositoryCommitsForUserOrg } from "@/common/models/commits.model";
-import { GithubIntegration } from "@/common/models/ghIntegration.model";
-import { syncRepositoryIssuesForUserOrg } from "@/common/models/issues.model";
-import { syncOrganizationsForUser } from "@/common/models/organization.model";
-import { syncRepositoryPullsForUserOrg } from "@/common/models/pulls.model";
-import { syncRepositoriesForUserOrg } from "@/common/models/repository.model";
-import { getGithubToken } from "@/common/utils/getGithubToken";
+import { handleIntegration, handleLogout } from "@/controllers/integration.controller";
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
-  const code = req.query.code;
+router.get("/", handleIntegration);
 
-  if (!code) {
-    return res.status(400).send("Missing code parameter");
-  }
+router.get("/logout", handleLogout);
 
-  const postData = {
-    client_id: process.env.GH_CLIENT_ID,
-    client_secret: process.env.GH_CLIENT_SECRET,
-    code,
-  };
-
-  try {
-    // Exchange code for access token
-    const tokenResponse = await axios.post("https://github.com/login/oauth/access_token", postData, {
-      headers: { Accept: "application/json" },
-    });
-
-    if (tokenResponse.data.error) {
-      return res.status(400).send({
-        error: tokenResponse.data.error,
-        message: tokenResponse.data.error_description,
-      });
-    }
-
-    const accessToken = tokenResponse.data.access_token;
-
-    // Fetch user data
-    const userResponse = await getGithubToken(accessToken);
-
-    // Fetch organizations
-    const orgs = await syncOrganizationsForUser(accessToken, userResponse.data.id);
-    for (const org of orgs) {
-      const repository = await syncRepositoriesForUserOrg(accessToken, org, userResponse.data.id);
-
-      for (const repo of repository) {
-        const commit = await syncRepositoryCommitsForUserOrg(accessToken, org, repo, userResponse.data.id);
-        const issues = await syncRepositoryIssuesForUserOrg(accessToken, org, repo, userResponse.data.id);
-        const pulls = await syncRepositoryPullsForUserOrg(accessToken, org, repo, userResponse.data.id);
-      }
-    }
-
-    // Save data to MongoDB
-    const integration = await (GithubIntegration as any)?.saveIntegrationData({
-      userId: userResponse.data.id,
-      username: userResponse.data.login,
-      lastSync: new Date().toISOString(),
-      token: accessToken,
-    });
-
-    res.status(200).send({
-      message: "GitHub Integration successful",
-      payload: integration,
-    });
-  } catch (error) {
-    console.error("Error during GitHub data fetch:", error);
-    res.status(500).send({ error: "Error processing GitHub OAuth" });
-  }
-});
-
-router.get("/logout", async (req, res) => {
-  try {
-    // Implement logout logic here
-    const userId = req.query.userId;
-
-    // Delete user's GitHub Integration data
-    const data = await GithubIntegration.deleteOne({ userId });
-
-    if (data.deletedCount === 0) {
-      return res.status(200).send({ error: "User not found" });
-    }
-
-    res.status(200).send({ message: "Logged out successfully" });
-  } catch (e) {
-    res.status(500).send({ error: "Error logging out" });
-  }
-});
 export { router };
-
-// Controller pattern
-// Worker thread
-// Server side filtering and sorting ( hint: can be done with the current ag grid )
-
-// Move to octokit
