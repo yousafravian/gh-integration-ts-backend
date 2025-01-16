@@ -1,5 +1,6 @@
 import axios from "axios";
 import mongoose from "mongoose";
+import mongoosePaginate from 'mongoose-paginate-v2';
 
 const GitHubRepositorySchema = new mongoose.Schema({}, { strict: false });
 
@@ -32,8 +33,9 @@ GitHubRepositorySchema.statics.saveRepoForUser = async function (repository: any
     return existingRepo;
   }
 };
+GitHubRepositorySchema.plugin(mongoosePaginate);
 
-export const GitHubRepository = mongoose.model("GitHubRepository", GitHubRepositorySchema);
+export const GitHubRepository = mongoose.model<object, mongoose.PaginateModel<object>>("GitHubRepository", GitHubRepositorySchema);
 
 const getRepositories = async (accessToken: string, orgName: string) => {
   const reposResponse = await axios.get(`https://api.github.com/orgs/${orgName}/repos`, {
@@ -52,3 +54,5 @@ export async function syncRepositoriesForUserOrg(accessToken: string, org: any, 
 
   return repositories;
 }
+
+// oc

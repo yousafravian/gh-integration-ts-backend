@@ -1,5 +1,6 @@
 import axios from "axios";
 import mongoose from "mongoose";
+import mongoosePaginate from 'mongoose-paginate-v2';
 
 const GitHubOrganizationSchema = new mongoose.Schema({}, { strict: false });
 
@@ -40,8 +41,10 @@ GitHubOrganizationSchema.statics.saveOrgForUser = async function (organization: 
     return existingOrg;
   }
 };
+GitHubOrganizationSchema.plugin(mongoosePaginate);
 
-export const GitHubOrganization = mongoose.model("GitHubOrganization", GitHubOrganizationSchema);
+export const GitHubOrganization = mongoose.model<object, mongoose.PaginateModel<object>>("GitHubOrganization", GitHubOrganizationSchema);
+
 
 export async function syncOrganizationsForUser(accessToken: string, userId: string) {
   const organizations = await (GitHubOrganization as any).getOrganizations(accessToken);

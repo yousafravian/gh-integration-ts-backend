@@ -71,31 +71,167 @@ router.get("/callback", async (req, res) => {
     res.status(500).send({ error: "Error processing GitHub OAuth" });
   }
 });
+
 router.get("/organizations", async (req, res) => {
-  // Get all organizations
-  const organizations = await GitHubOrganization.find({});
-  return res.status(200).send(organizations);
+  try {
+    const page = Number.parseInt(req.query.page as string) ?? 1; // Default to page 1
+    const limit = Number.parseInt(req.query.limit as string) ?? 10; // Default to 10 items per page
+
+    const options = {
+      page,
+      limit,
+      sort: { name: 1 },
+    };
+
+    const result = await GitHubOrganization.paginate({}, options);
+
+    res.status(200).send({
+      data: result.docs,
+      meta: {
+        totalDocs: result.totalDocs,
+        totalPages: result.totalPages,
+        page: result.page,
+        limit: result.limit,
+        hasNextPage: result.hasNextPage,
+        hasPrevPage: result.hasPrevPage,
+        nextPage: result.nextPage,
+        prevPage: result.prevPage,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching organizations:", error);
+    res.status(500).send({ error: "Server error while fetching organizations" });
+  }
 });
+
 router.get("/repos", async (req, res) => {
-  // Get all organizations
-  const repos = await GitHubRepository.find({});
-  return res.status(200).send(repos);
+  try {
+    const page = Number.parseInt(req.query.page as string) ?? 1; // Default to page 1
+    const limit = Number.parseInt(req.query.limit as string) ?? 10; // Default to 10 items per page
+
+    const options = {
+      page,
+      limit,
+      sort: { name: 1 },
+    };
+
+    const result = await GitHubRepository.paginate({}, options);
+
+    res.status(200).send({
+      data: result.docs,
+      meta: {
+        totalDocs: result.totalDocs,
+        totalPages: result.totalPages,
+        page: result.page,
+        limit: result.limit,
+        hasNextPage: result.hasNextPage,
+        hasPrevPage: result.hasPrevPage,
+        nextPage: result.nextPage,
+        prevPage: result.prevPage,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching repositories:", error);
+    res.status(500).send({ error: "Server error while fetching repositories" });
+  }
 });
+
 router.get("/commits", async (req, res) => {
-  // Get all organizations
-  const commits = await GitHubRepositoryCommits.find({});
-  return res.status(200).send(commits);
+  try {
+    const page = Number.parseInt(req.query.page as string) ?? 1; // Default to page 1
+    const limit = Number.parseInt(req.query.limit as string) ?? 10; // Default to 10 items per page
+
+    const options = {
+      page,
+      limit,
+      sort: { date: -1 }, // Sort by date in descending order
+    };
+
+    const result = await GitHubRepositoryCommits.paginate({}, options);
+
+    res.status(200).send({
+      data: result.docs,
+      meta: {
+        totalDocs: result.totalDocs,
+        totalPages: result.totalPages,
+        page: result.page,
+        limit: result.limit,
+        hasNextPage: result.hasNextPage,
+        hasPrevPage: result.hasPrevPage,
+        nextPage: result.nextPage,
+        prevPage: result.prevPage,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching commits:", error);
+    res.status(500).send({ error: "Server error while fetching commits" });
+  }
 });
+
 router.get("/issues", async (req, res) => {
-  // Get all organizations
-  const issues = await GitHubRepositoryIssues.find({});
-  return res.status(200).send(issues);
+  try {
+    const page = Number.parseInt(req.query.page as string) ?? 1; // Default to page 1
+    const limit = Number.parseInt(req.query.limit as string) ?? 10; // Default to 10 items per page
+
+    const options = {
+      page,
+      limit,
+      sort: { createdAt: -1 }, // Sort by creation date in descending order
+    };
+
+    const result = await GitHubRepositoryIssues.paginate({}, options);
+
+    res.status(200).send({
+      data: result.docs,
+      meta: {
+        totalDocs: result.totalDocs,
+        totalPages: result.totalPages,
+        page: result.page,
+        limit: result.limit,
+        hasNextPage: result.hasNextPage,
+        hasPrevPage: result.hasPrevPage,
+        nextPage: result.nextPage,
+        prevPage: result.prevPage,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching issues:", error);
+    res.status(500).send({ error: "Server error while fetching issues" });
+  }
 });
+
 router.get("/pulls", async (req, res) => {
-  // Get all organizations
-  const pulls = await GitHubRepositoryPulls.find({});
-  return res.status(200).send(pulls);
+  try {
+    const page = Number.parseInt(req.query.page as string) ?? 1; // Default to page 1
+    const limit = Number.parseInt(req.query.limit as string) ?? 10; // Default to 10 items per page
+
+    const options = {
+      page,
+      limit,
+      sort: { updatedAt: -1 }, // Sort by update date in descending order
+    };
+
+    const result = await GitHubRepositoryPulls.paginate({}, options);
+
+    res.status(200).send({
+      data: result.docs,
+      meta: {
+        totalDocs: result.totalDocs,
+        totalPages: result.totalPages,
+        page: result.page,
+        limit: result.limit,
+        hasNextPage: result.hasNextPage,
+        hasPrevPage: result.hasPrevPage,
+        nextPage: result.nextPage,
+        prevPage: result.prevPage,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching pull requests:", error);
+    res.status(500).send({ error: "Server error while fetching pull requests" });
+  }
 });
+
 router.get("/logout", async (req, res) => {
   try {
     // Implement logout logic here
@@ -202,3 +338,10 @@ router.get("/pullsTextSearch", async (req, res) => {
 });
 
 export { router };
+
+
+// Controller pattern
+// Worker thread
+// Server side filtering and sorting ( hint: can be done with the current ag grid )
+
+// Move to octokit

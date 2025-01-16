@@ -1,5 +1,6 @@
 import axios from "axios";
 import mongoose from "mongoose";
+import mongoosePaginate from 'mongoose-paginate-v2';
 
 const GitHubCommitsSchema = new mongoose.Schema({}, { strict: false });
 
@@ -33,7 +34,8 @@ GitHubCommitsSchema.statics.saveCommitForUser = async function (repo: any, commi
   }
 };
 
-export const GitHubRepositoryCommits = mongoose.model("GitHubRepositoryCommits", GitHubCommitsSchema);
+GitHubCommitsSchema.plugin(mongoosePaginate);
+export const GitHubRepositoryCommits = mongoose.model<object, mongoose.PaginateModel<object>>("GitHubRepositoryCommits", GitHubCommitsSchema);
 
 // Async generator to fetch commits page by page
 async function* fetchRepositoryCommits(accessToken: string, repo: any) {

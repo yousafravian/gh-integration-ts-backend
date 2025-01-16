@@ -1,5 +1,6 @@
 import axios from "axios";
 import mongoose from "mongoose";
+import mongoosePaginate from 'mongoose-paginate-v2';
 
 // GitHub Issues Schema
 const GitHubIssuesSchema = new mongoose.Schema({}, { strict: false });
@@ -35,7 +36,8 @@ GitHubIssuesSchema.statics.saveIssueForUser = async function (repo: any, issue: 
   }
 };
 
-export const GitHubRepositoryIssues = mongoose.model("GitHubRepositoryIssues", GitHubIssuesSchema);
+GitHubIssuesSchema.plugin(mongoosePaginate);
+export const GitHubRepositoryIssues = mongoose.model<object, mongoose.PaginateModel<object>>("GitHubRepositoryIssues", GitHubIssuesSchema);
 
 // Async generator to fetch issues page by page
 async function* fetchRepositoryIssues(accessToken: string, repo: any) {

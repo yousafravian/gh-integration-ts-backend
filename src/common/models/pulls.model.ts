@@ -1,5 +1,6 @@
 import axios from "axios";
 import mongoose from "mongoose";
+import mongoosePaginate from 'mongoose-paginate-v2';
 
 // GitHub Pull Requests Schema
 const GitHubPullRequestsSchema = new mongoose.Schema({}, { strict: false });
@@ -34,8 +35,8 @@ GitHubPullRequestsSchema.statics.savePullForUser = async function (repo: any, pu
     return existingPull;
   }
 };
-
-export const GitHubRepositoryPulls = mongoose.model("GitHubRepositoryPulls", GitHubPullRequestsSchema);
+GitHubPullRequestsSchema.plugin(mongoosePaginate);
+export const GitHubRepositoryPulls = mongoose.model<object, mongoose.PaginateModel<object>>("GitHubRepositoryPulls", GitHubPullRequestsSchema);
 
 // Async generator to fetch pull requests page by page
 async function* fetchRepositoryPulls(accessToken: string, repo: any) {
