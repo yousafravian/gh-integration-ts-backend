@@ -1,7 +1,9 @@
 import type { Request, Response } from "express";
 
 import { GitHubRepositoryCommits } from "@/common/models/commits.model";
+import { OctokitService } from '@/common/utils/octokit.service';
 
+// Route handlers
 export const getPaginatedCommits = async ( req: Request, res: Response) => {
   try {
     const page = Number.parseInt(req.query.page as string) ?? 1; // Default to page 1
@@ -75,5 +77,71 @@ export const getSearchResults = async (req: Request, res: Response) => {
     } else {
       res.status(500).send({ error: "Server error while fetching commits" });
     }
+  }
+};
+
+
+// Utility functions
+// Incremental saving function
+export async function syncRepositoryCommitsForUserOrg(accessToken: string, org: any, repo: any, userId: number) {
+  const CAP = 100;
+  let current = 0;
+  const commitIterator = OctokitService.fetchRepositoryCommits(accessToken, repo);
+
+  try {
+    for await (const commitsPage of commitIterator) {
+      for (const commit of commitsPage) {
+        // Save each commit incrementally
+        await saveCommitForUser(repo, commit, org, userId);
+      }
+      console.log(`Saved ${commitsPage.length} commits for page.`);
+
+      current += commitsPage.length as number;
+      if (current >= CAP) {
+        console.log("Reached commit limit. Stopping sync.");
+        break;
+      }
+    }
+
+    console.log("All commits have been synced successfully.");
+  } catch (error) {
+    console.error("Error syncing commits:", error);
+  }
+}
+
+
+export const saveCommitForUser = async (repo: any, commit: any, org: any, userId: number ) => {
+  try {
+    // Check if the commit already exists
+    const existingCommit = await GitHubRepositoryCommits.findOne({
+      userId: userId,
+      commitId: commit.sha,
+    });
+
+    if (!existingCommit) {
+      // Create a new commit document
+      const payload = new GitHubRepositoryCommits({
+        userId,
+        ...commit,
+        repoId: repo.id,
+        orgId: org.id,
+        commitId: commit.sha,
+      });
+      return await GitHubRepositoryCommits.create(payload);
+    } else {
+      // Update the existing commit document
+      existingCommit.set({
+        ...commit,
+        repoId: repo.id,
+        orgId: org.id,
+        updatedAt: new Date(), // Optionally, update a timestamp field
+      });
+
+      await existingCommit.save(); // Persist changes to the database
+      return existingCommit;
+    }
+  } catch (error) {
+    console.error("Error saving commit for user:", error);
+    throw error;
   }
 };

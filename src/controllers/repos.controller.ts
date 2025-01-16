@@ -1,6 +1,8 @@
 import { GitHubRepository } from "@/common/models/repository.model";
 import type { Request, Response } from "express";
+import { OctokitService } from '@/common/utils/octokit.service';
 
+// Route Handler
 export const getPaginatedRepos = async (req: Request, res: Response) => {
   try {
     const page = Number.parseInt(req.query.page as string) ?? 1; // Default to page 1
@@ -40,3 +42,44 @@ export const getPaginatedRepos = async (req: Request, res: Response) => {
     res.status(500).send({ error: "Server error while fetching repositories" });
   }
 };
+
+
+// utility functions
+export const saveRepoForUser = async (repository: any, org: any, userId: number) => {
+  const existingRepo = await GitHubRepository.findOne({
+    userId: userId,
+    repoId: repository.id,
+  });
+
+  console.log(userId, repository.id);
+
+  if (!existingRepo) {
+    // Create a new repository document
+    const payload = new GitHubRepository({
+      userId,
+      ...repository,
+      repoId: repository.id,
+    });
+    return await GitHubRepository.create(payload);
+  } else {
+    // Update the existing repository document
+    existingRepo.set({
+      ...repository, // Spread the new repository data
+      repoId: repository.id, // Ensure repoId is updated
+      orgId: org.orgId,
+      updatedAt: new Date(), // Optionally, update a timestamp field
+    });
+
+    await existingRepo.save(); // Persist changes to the database
+    return existingRepo;
+  }
+};
+export async function syncRepositoriesForUserOrg(accessToken: string, org: any, userId: number) {
+  const repositories = await OctokitService.getRepositories(accessToken, org.login);
+
+  for (const repo of repositories) {
+    const resp = await saveRepoForUser(repo, org, userId);
+  }
+
+  return repositories;
+}

@@ -1,13 +1,14 @@
 import axios from "axios";
-import { getGithubToken } from "@/common/utils/getGithubToken";
-import { syncOrganizationsForUser } from "@/common/models/organization.model";
-import { syncRepositoriesForUserOrg } from "@/common/models/repository.model";
-import { syncRepositoryCommitsForUserOrg } from "@/common/models/commits.model";
-import { syncRepositoryIssuesForUserOrg } from "@/common/models/issues.model";
-import { syncRepositoryPullsForUserOrg } from "@/common/models/pulls.model";
 import { GithubIntegration } from "@/common/models/ghIntegration.model";
 import type { Request, Response } from "express";
+import { OctokitService } from '@/common/utils/octokit.service';
+import { syncRepositoryIssuesForUserOrg } from "./issues.controller";
+import { syncRepositoryCommitsForUserOrg } from "./commits.controller";
+import { syncOrganizationsForUser } from "./orgs.controller";
+import { syncRepositoryPullsForUserOrg } from "./pull-requests.controller";
+import { syncRepositoriesForUserOrg } from '@/controllers/repos.controller';
 
+// Route handlers
 export const handleIntegration = async (req: Request, res: Response) => {
   const code = req.query.code;
 
@@ -37,24 +38,27 @@ export const handleIntegration = async (req: Request, res: Response) => {
     const accessToken = tokenResponse.data.access_token;
 
     // Fetch user data
-    const userResponse = await getGithubToken(accessToken);
+    const userResponse = await OctokitService.getAuthenticatedUser(accessToken);
+    const userId = userResponse.data.id;
+    const username = userResponse.data.login;
 
     // Fetch organizations
-    const orgs = await syncOrganizationsForUser(accessToken, userResponse.data.id);
-    for (const org of orgs) {
-      const repository = await syncRepositoriesForUserOrg(accessToken, org, userResponse.data.id);
+    const orgs = await syncOrganizationsForUser(accessToken, userId);
 
-      for (const repo of repository) {
-        const commit = await syncRepositoryCommitsForUserOrg(accessToken, org, repo, userResponse.data.id);
-        const issues = await syncRepositoryIssuesForUserOrg(accessToken, org, repo, userResponse.data.id);
-        const pulls = await syncRepositoryPullsForUserOrg(accessToken, org, repo, userResponse.data.id);
+    for (const org of orgs) {
+      const repositories = await syncRepositoriesForUserOrg(accessToken, org, userId);
+
+      for (const repo of repositories) {
+        await syncRepositoryCommitsForUserOrg(accessToken, org, repo, userId);
+        await syncRepositoryIssuesForUserOrg(accessToken, org, repo, userId);
+        await syncRepositoryPullsForUserOrg(accessToken, org, repo, userId);
       }
     }
 
     // Save data to MongoDB
-    const integration = await (GithubIntegration as any)?.saveIntegrationData({
-      userId: userResponse.data.id,
-      username: userResponse.data.login,
+    const integration = await saveIntegrationData({
+      userId,
+      username,
       lastSync: new Date().toISOString(),
       token: accessToken,
     });
@@ -71,7 +75,6 @@ export const handleIntegration = async (req: Request, res: Response) => {
 
 export const handleLogout = async (req: Request, res: Response) => {
   try {
-    // Implement logout logic here
     const userId = req.query.userId;
 
     // Delete user's GitHub Integration data
@@ -84,5 +87,41 @@ export const handleLogout = async (req: Request, res: Response) => {
     res.status(200).send({ message: "Logged out successfully" });
   } catch (e) {
     res.status(500).send({ error: "Error logging out" });
+  }
+};
+
+
+// utility functions
+export const saveIntegrationData = async (data: any) => {
+  const { userId, username, lastSync, token } = data;
+
+  try {
+    // Check if the integration already exists
+    const existingIntegration = await GithubIntegration.findOne({ userId });
+
+    if (existingIntegration) {
+      // Update existing integration
+      existingIntegration.token = token;
+      existingIntegration.lastSync = lastSync;
+
+      await existingIntegration.save();
+      console.log("GitHub Integration updated successfully");
+      return existingIntegration;
+    } else {
+      // Create a new integration
+      const integration = new GithubIntegration({
+        userId,
+        username,
+        lastSync,
+        token,
+      });
+
+      await integration.save();
+      console.log("GitHub Integration created successfully");
+      return integration;
+    }
+  } catch (error) {
+    console.error("Error saving GitHub Integration data:", error);
+    throw new Error("Error saving GitHub Integration data");
   }
 };

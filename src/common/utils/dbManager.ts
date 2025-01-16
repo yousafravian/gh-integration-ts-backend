@@ -1,5 +1,4 @@
 import mongoose from "mongoose";
-
 import { env } from "@/common/utils/envConfig";
 
 // Connect to mongoose from env.DB_URL
