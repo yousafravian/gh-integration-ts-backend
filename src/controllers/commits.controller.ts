@@ -6,12 +6,20 @@ export const getPaginatedCommits = async ( req: Request, res: Response) => {
   try {
     const page = Number.parseInt(req.query.page as string) ?? 1; // Default to page 1
     const limit = Number.parseInt(req.query.limit as string) ?? 10; // Default to 10 items per page
+    const sortColumn = req.query.sortColumn as string;
+    const sortDirection = req.query.sortDirection as 'asc' | 'desc';
 
-    const options = {
+    const options: Record<string, any> = {
       page,
       limit,
       sort: { date: -1 }, // Sort by date in descending order
     };
+    
+    if (sortColumn && sortDirection) {
+      options.sort = {
+        [sortColumn]: sortDirection === 'asc' ? 1 : -1,
+      };
+    }
 
     const result = await GitHubRepositoryCommits.paginate({}, options);
 
