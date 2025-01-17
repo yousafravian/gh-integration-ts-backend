@@ -1,6 +1,8 @@
 import { GitHubRepository } from "@/models/repository.model";
 import type { Request, Response } from "express";
 import { OctokitService } from '@/common/utils/octokit.service';
+import type { AGGridFilterModel } from '@/common/types/ag-grid-filter.model';
+import { translateFilterModelToMongooseQuery } from '@/common/utils/agGridToMongoose';
 
 // Route Handler
 export const getPaginatedRepos = async (req: Request, res: Response) => {
@@ -9,6 +11,19 @@ export const getPaginatedRepos = async (req: Request, res: Response) => {
     const limit = Number.parseInt(req.query.limit as string) ?? 10; // Default to 10 items per page
     const sortColumn = req.query.sortColumn as string;
     const sortDirection = req.query.sortDirection as 'asc' | 'desc';
+    // Parse and validate filterModel
+    let filterModel: AGGridFilterModel = {};
+    if (req.query.filterModel) {
+      try {
+        filterModel = JSON.parse(req.query.filterModel as string) as AGGridFilterModel;
+      } catch (parseError) {
+        return res.status(400).send({ error: 'Invalid filterModel format.' });
+      }
+    }
+
+    // Translate AG Grid Filter Model to Mongoose Query
+    const mongooseFilter = translateFilterModelToMongooseQuery(filterModel);
+
 
     const options: Record<string, any> = {
       page,
@@ -22,7 +37,7 @@ export const getPaginatedRepos = async (req: Request, res: Response) => {
       };
     }
 
-    const result = await GitHubRepository.paginate({}, options);
+    const result = await GitHubRepository.paginate(mongooseFilter, options);
 
     res.status(200).send({
       data: result.docs,
