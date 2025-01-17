@@ -5,6 +5,7 @@ const GithubIntegrationSchema = new mongoose.Schema({
   username: { type: String, required: true }, // GitHub Username
   token: { type: String, required: true }, // Access Token
   connectedAt: { type: Date, default: Date.now },
+  isProc: { type: Number, required: true },
   lastSync: { type: Date },
 });
 

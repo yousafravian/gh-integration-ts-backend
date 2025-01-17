@@ -1,75 +1,67 @@
-import axios from "axios";
 import { GithubIntegration } from "@/common/models/ghIntegration.model";
 import type { Request, Response } from "express";
-import { OctokitService } from '@/common/utils/octokit.service';
-import { syncRepositoryIssuesForUserOrg } from "./issues.controller";
-import { syncRepositoryCommitsForUserOrg } from "./commits.controller";
-import { syncOrganizationsForUser } from "./orgs.controller";
-import { syncRepositoryPullsForUserOrg } from "./pull-requests.controller";
-import { syncRepositoriesForUserOrg } from '@/controllers/repos.controller';
+import * as path from 'node:path';
+import { Worker } from 'node:worker_threads';
+import { SocketService } from '@/common/utils/socket.service';
+
 
 // Route handlers
 export const handleIntegration = async (req: Request, res: Response) => {
   const code = req.query.code;
 
-  if (!code) {
-    return res.status(400).send("Missing code parameter");
-  }
+  // Create a new worker
+  console.log('path', path.resolve(__dirname, '../../dist/common/workers', 'integration.worker.js'));
+  const worker = new Worker(path.resolve(__dirname, '../../dist/common/workers', 'integration.worker.js'), {
+    workerData: { code },
+  });
 
-  const postData = {
-    client_id: process.env.GH_CLIENT_ID,
-    client_secret: process.env.GH_CLIENT_SECRET,
-    code,
-  };
+  // Listen for messages from the worker
+  worker.on('message', (message) => {
+    if (message instanceof Error) {
+      console.error('Worker error:', message);
+      SocketService.getSocket().emit('syncProcessing', {
+        status: 500,
+        error: 'An error occurred while processing your request.'
+      })
+    } else {
+      res.send(message);
+    }
+  });
 
-  try {
-    // Exchange code for access token
-    const tokenResponse = await axios.post("https://github.com/login/oauth/access_token", postData, {
-      headers: { Accept: "application/json" },
+  // Handle errors from the worker
+  worker.on('error', (error) => {
+    console.error('Worker error:', error);
+    SocketService.getSocket().emit('syncProcessing', {
+      status: 500,
+      error: 'An error occurred while processing your request.'
     });
+  });
 
-    if (tokenResponse.data.error) {
-      return res.status(400).send({
-        error: tokenResponse.data.error,
-        message: tokenResponse.data.error_description,
+  // Handle worker exit
+  worker.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(`Worker stopped with exit code ${code}`);
+      SocketService.getSocket().emit('syncProcessing', {
+        status: 500,
+        error: 'An error occurred while processing your request.'
       });
     }
+  });
+};
 
-    const accessToken = tokenResponse.data.access_token;
-
-    // Fetch user data
-    const userResponse = await OctokitService.getAuthenticatedUser(accessToken);
-    const userId = userResponse.data.id;
-    const username = userResponse.data.login;
-
-    // Fetch organizations
-    const orgs = await syncOrganizationsForUser(accessToken, userId);
-
-    for (const org of orgs) {
-      const repositories = await syncRepositoriesForUserOrg(accessToken, org, userId);
-
-      for (const repo of repositories) {
-        await syncRepositoryCommitsForUserOrg(accessToken, org, repo, userId);
-        await syncRepositoryIssuesForUserOrg(accessToken, org, repo, userId);
-        await syncRepositoryPullsForUserOrg(accessToken, org, repo, userId);
-      }
-    }
-
-    // Save data to MongoDB
-    const integration = await saveIntegrationData({
-      userId,
-      username,
-      lastSync: new Date().toISOString(),
-      token: accessToken,
+export const handleCheckSyncStatus = async (req: Request, res: Response) => {
+  const userId = req.query.userId;
+  const user = await GithubIntegration.findOne({
+    userId
+  });
+  
+  if (!user) {
+    return res.status(404).send({ message: "User not found" });
+  } else {
+    return res.status(200).send({
+      message: 'User found',
+      payload: user.toObject(),
     });
-
-    res.status(200).send({
-      message: "GitHub Integration successful",
-      payload: integration,
-    });
-  } catch (error) {
-    console.error("Error during GitHub data fetch:", error);
-    res.status(500).send({ error: "Error processing GitHub OAuth" });
   }
 };
 
@@ -93,7 +85,7 @@ export const handleLogout = async (req: Request, res: Response) => {
 
 // utility functions
 export const saveIntegrationData = async (data: any) => {
-  const { userId, username, lastSync, token } = data;
+  const { userId, username, lastSync, token, isProc } = data;
 
   try {
     // Check if the integration already exists
@@ -103,6 +95,7 @@ export const saveIntegrationData = async (data: any) => {
       // Update existing integration
       existingIntegration.token = token;
       existingIntegration.lastSync = lastSync;
+      existingIntegration.isProc = isProc;
 
       await existingIntegration.save();
       console.log("GitHub Integration updated successfully");
@@ -113,6 +106,7 @@ export const saveIntegrationData = async (data: any) => {
         userId,
         username,
         lastSync,
+        isProc: +isProc,
         token,
       });
 

@@ -1,6 +1,6 @@
 import { connectDB } from "@/common/utils/dbManager";
 import { env } from "@/common/utils/envConfig";
-import { app, logger } from "@/server";
+import { server as app, logger } from "@/server";
 
 const startServer = async () => {
   await connectDB();

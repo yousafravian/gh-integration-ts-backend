@@ -84,7 +84,7 @@ export const getSearchResults = async (req: Request, res: Response) => {
 // Utility functions
 // Incremental saving function
 export async function syncRepositoryCommitsForUserOrg(accessToken: string, org: any, repo: any, userId: number) {
-  const CAP = 100;
+  const COMMITS_CAP = 100;
   let current = 0;
   const commitIterator = OctokitService.fetchRepositoryCommits(accessToken, repo);
 
@@ -97,9 +97,11 @@ export async function syncRepositoryCommitsForUserOrg(accessToken: string, org: 
       console.log(`Saved ${commitsPage.length} commits for page.`);
 
       current += commitsPage.length as number;
-      if (current >= CAP) {
+      if (current >= COMMITS_CAP) {
         console.log("Reached commit limit. Stopping sync.");
         break;
+      } else {
+        console.log("Syncing next page of commits...", current, COMMITS_CAP);
       }
     }
 

@@ -28,12 +28,15 @@
     "express": "^4.19.2",
     "express-rate-limit": "^7.2.0",
     "helmet": "^8.0.0",
+    "http": "^0.0.1-security",
     "http-status-codes": "^2.3.0",
+    "module-alias": "^2.2.3",
     "mongoose": "^8.9.1",
     "mongoose-paginate-v2": "^1.9.0",
     "octokit": "^4.1.0",
     "pino": "^9.4.0",
     "pino-http": "^10.0.0",
+    "socket.io": "^4.8.1",
     "swagger-ui-express": "^5.0.0",
     "zod": "^3.22.4"
   },
@@ -45,6 +48,7 @@
     "@types/swagger-ui-express": "^4.1.6",
     "husky": "^9.0.11",
     "lint-staged": "^15.2.2",
+    "nodemon": "^3.1.9",
     "pino-pretty": "^11.0.0",
     "rimraf": "^6.0.0",
     "supertest": "^7.0.0",
@@ -68,5 +72,8 @@
     "splitting": false,
     "sourcemap": true,
     "clean": true
+  },
+  "_moduleAliases": {
+    "@": "dist"
   }
 }
