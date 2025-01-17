@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 
-import { GitHubRepositoryCommits } from "@/common/models/commits.model";
+import { GitHubRepositoryCommits } from "@/models/commits.model";
 import { OctokitService } from '@/common/utils/octokit.service';
 
 // Route handlers

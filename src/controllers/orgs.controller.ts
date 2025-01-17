@@ -1,4 +1,4 @@
-import { GitHubOrganization } from "@/common/models/organization.model";
+import { GitHubOrganization } from "@/models/organization.model";
 import type { Request, Response } from "express";
 import { OctokitService } from "@/common/utils/octokit.service";
 

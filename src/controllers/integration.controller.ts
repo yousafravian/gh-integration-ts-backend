@@ -1,4 +1,4 @@
-import { GithubIntegration } from "@/common/models/ghIntegration.model";
+import { GithubIntegration } from "@/models/ghIntegration.model";
 import type { Request, Response } from "express";
 import * as path from 'node:path';
 import { Worker } from 'node:worker_threads';

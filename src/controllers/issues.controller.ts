@@ -1,4 +1,4 @@
-import { GitHubRepositoryIssues } from "@/common/models/issues.model";
+import { GitHubRepositoryIssues } from "@/models/issues.model";
 import type { Request, Response } from "express";
 import { OctokitService } from '@/common/utils/octokit.service';
 
