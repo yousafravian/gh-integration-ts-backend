@@ -10,7 +10,6 @@ export const handleIntegration = async (req: Request, res: Response) => {
   const code = req.query.code;
 
   // Create a new worker
-  console.log('path', path.resolve(__dirname, '../../dist/common/workers', 'integration.worker.js'));
   const worker = new Worker(path.resolve(__dirname, '../../dist/common/workers', 'integration.worker.js'), {
     workerData: { code },
   });

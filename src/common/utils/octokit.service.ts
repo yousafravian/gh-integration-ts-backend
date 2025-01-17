@@ -64,7 +64,7 @@ export class OctokitService {
       yield [];
     }
   }
-  
+
   static async *fetchRepositoryCommits(token: string, repo: any) {
     if (!octokit) OctokitService.authenticate(token);
 

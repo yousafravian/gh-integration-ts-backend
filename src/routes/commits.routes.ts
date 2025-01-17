@@ -12,6 +12,6 @@ export { router };
 
 // Controller pattern
 // Worker thread
-// Server side filtering and sorting ( hint: can be done with the current ag grid )
-
 // Move to octokit
+
+// Server side filtering and sorting ( hint: can be done with the current ag grid )
